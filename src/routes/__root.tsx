@@ -11,6 +11,9 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Navbar } from "@/components/Navbar";
+import { LoginModal } from "@/components/LoginModal";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -92,6 +95,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -119,8 +128,28 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="relative min-h-screen font-sans text-[#1D1D1F]" style={{ backgroundColor: "#F5F5F7" }}>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+          <div
+            className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(0,122,255,0.07), transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-40 -left-40 w-[700px] h-[700px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(88,86,214,0.05), transparent 70%)" }}
+          />
+          <div
+            className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full -translate-y-1/2"
+            style={{ background: "radial-gradient(circle, rgba(0,199,190,0.04), transparent 70%)" }}
+          />
+        </div>
+        <div className="relative z-10">
+          <Navbar />
+          <Outlet />
+        </div>
+        <LoginModal />
+        <Toaster position="top-center" richColors />
+      </div>
     </QueryClientProvider>
   );
 }
