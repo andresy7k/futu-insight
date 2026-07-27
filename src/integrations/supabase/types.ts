@@ -86,6 +86,63 @@ export type Database = {
         }
         Relationships: []
       }
+      predictions: {
+        Row: {
+          away_team: string
+          best_picks: Json | null
+          confidence_score: number | null
+          created_at: string
+          deep_analysis: Json | null
+          generated_at: string
+          home_team: string
+          id: string
+          league: string | null
+          main_pick: string | null
+          match_id: string
+          ml_probabilities: Json | null
+          model_used: string | null
+          payload: Json
+          quick_summary: string | null
+          risk_level: string | null
+        }
+        Insert: {
+          away_team: string
+          best_picks?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          deep_analysis?: Json | null
+          generated_at?: string
+          home_team: string
+          id?: string
+          league?: string | null
+          main_pick?: string | null
+          match_id: string
+          ml_probabilities?: Json | null
+          model_used?: string | null
+          payload: Json
+          quick_summary?: string | null
+          risk_level?: string | null
+        }
+        Update: {
+          away_team?: string
+          best_picks?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          deep_analysis?: Json | null
+          generated_at?: string
+          home_team?: string
+          id?: string
+          league?: string | null
+          main_pick?: string | null
+          match_id?: string
+          ml_probabilities?: Json | null
+          model_used?: string | null
+          payload?: Json
+          quick_summary?: string | null
+          risk_level?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
