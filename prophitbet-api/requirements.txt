@@ -6,5 +6,4 @@ scikit-learn
 xgboost
 joblib
 requests
-python-dotenv
 pydantic
