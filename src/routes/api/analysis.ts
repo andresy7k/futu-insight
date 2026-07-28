@@ -428,7 +428,7 @@ export const Route = createFileRoute("/api/analysis")({
                   best_picks: result.best_picks ?? null,
                   ml_probabilities: result.ml_probabilities ?? null,
                   model_used: result.model_used,
-                  payload: result,
+                  payload: result as unknown as Database["public"]["Tables"]["predictions"]["Insert"]["payload"],
                   generated_at: result.generated_at,
                 },
                 { onConflict: "match_id" },
