@@ -1,20 +1,34 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import type { SportsDBEvent } from "@/lib/sportsdb";
+import { fetchAnalysis } from "@/lib/analysis";
 
 export function QuickSummaryModal({
   open,
   onClose,
   event,
-  confidence,
 }: {
   open: boolean;
   onClose: () => void;
   event: SportsDBEvent;
-  confidence: number;
 }) {
-  const pick = confidence > 55 ? event.strHomeTeam : event.strAwayTeam;
-  const risk = confidence > 70 ? "bajo" : confidence >= 40 ? "medio" : "alto";
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["analysis", event.idEvent, "quick"],
+    queryFn: () => fetchAnalysis(event, "quick"),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const unavailable = !isLoading && (isError || !data || data.error);
+  const riskLabel =
+    data?.risk_level === "low"
+      ? "bajo"
+      : data?.risk_level === "high"
+      ? "alto"
+      : data?.risk_level === "medium"
+      ? "medio"
+      : null;
   return (
     <AnimatePresence>
       {open && (
@@ -45,21 +59,41 @@ export function QuickSummaryModal({
             <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#1D1D1F]">
               {event.strHomeTeam} vs {event.strAwayTeam}
             </h3>
-            <div className="mt-4 space-y-3 text-sm text-[#1D1D1F]">
-              <p>
-                <span className="font-medium">Pick principal:</span> {pick}
+            {isLoading && (
+              <div className="mt-4 space-y-3">
+                <div className="h-4 w-2/3 bg-black/5 rounded animate-pulse" />
+                <div className="h-4 w-1/2 bg-black/5 rounded animate-pulse" />
+                <div className="h-16 w-full bg-black/5 rounded animate-pulse" />
+              </div>
+            )}
+            {!isLoading && unavailable && (
+              <p className="mt-4 text-sm text-[#636366]">
+                Análisis no disponible en este momento.
               </p>
-              <p>
-                <span className="font-medium">Confianza:</span> {confidence}%
-              </p>
-              <p>
-                <span className="font-medium">Riesgo:</span> {risk}
-              </p>
-              <p className="text-[#636366] leading-relaxed">
-                El modelo evalúa forma reciente, xG proyectado y desempeño histórico en
-                {" "}{event.strLeague}. Ventaja marginal detectada en el mercado 1X2.
-              </p>
-            </div>
+            )}
+            {!isLoading && !unavailable && data && (
+              <div className="mt-4 space-y-3 text-sm text-[#1D1D1F]">
+                {data.main_pick && (
+                  <p>
+                    <span className="font-medium">Pick principal:</span> {data.main_pick}
+                  </p>
+                )}
+                {typeof data.confidence_score === "number" && (
+                  <p>
+                    <span className="font-medium">Confianza:</span>{" "}
+                    {Math.round(data.confidence_score)}%
+                  </p>
+                )}
+                {riskLabel && (
+                  <p>
+                    <span className="font-medium">Riesgo:</span> {riskLabel}
+                  </p>
+                )}
+                {data.quick_summary && (
+                  <p className="text-[#636366] leading-relaxed">{data.quick_summary}</p>
+                )}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
