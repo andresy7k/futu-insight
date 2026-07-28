@@ -97,7 +97,6 @@ export function MatchCard({ event }: { event: SportsDBEvent }) {
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
         event={event}
-        confidence={confidence}
       />
       <AddBetModal open={betOpen} onClose={() => setBetOpen(false)} event={event} odds={odds} />
     </>

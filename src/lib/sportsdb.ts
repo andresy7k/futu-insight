@@ -65,15 +65,25 @@ async function fetchSport(date: string, sport: string): Promise<SportsDBEvent[]>
 
 export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> {
   try {
-    const [soccer, basketball, baseball] = await Promise.all([
-      fetchSport(date, "Soccer"),
-      fetchSport(date, "Basketball"),
-      fetchSport(date, "Baseball"),
-    ]);
-    const all = [...soccer, ...basketball, ...baseball];
-    return all
-      .filter((e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague))
-      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+    const soccer = (await fetchSport(date, "Soccer")).filter(
+      (e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague),
+    );
+
+    let basketball: SportsDBEvent[] = [];
+    let baseball: SportsDBEvent[] = [];
+    if (soccer.length < 3) {
+      const [b, m] = await Promise.all([
+        fetchSport(date, "Basketball"),
+        fetchSport(date, "Baseball"),
+      ]);
+      basketball = b.filter((e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague));
+      baseball = m.filter((e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague));
+    }
+
+    return [...soccer, ...basketball, ...baseball].map((e) => ({
+      ...e,
+      strStatus: mapStatus(e.strStatus),
+    }));
   } catch {
     return [];
   }
@@ -96,9 +106,10 @@ export async function fetchEventById(id: string): Promise<SportsDBEvent | null> 
 export function generateOdds(id: string): { home: string; draw: string; away: string } {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  // Use unsigned right shift so shifted values stay positive.
   const a = 1.5 + ((h % 250) / 100); // 1.50 - 3.99
-  const b = 2.8 + (((h >> 8) % 150) / 100);
-  const c = 1.6 + (((h >> 16) % 280) / 100);
+  const b = 2.8 + (((h >>> 8) % 150) / 100); // 2.80 - 4.29
+  const c = 1.6 + (((h >>> 16) % 280) / 100); // 1.60 - 4.39
   return { home: a.toFixed(2), draw: b.toFixed(2), away: c.toFixed(2) };
 }
 
