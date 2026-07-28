@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { fetchEventById, generateConfidence, generateOdds } from "@/lib/sportsdb";
+import { fetchAnalysis } from "@/lib/analysis";
 import { formatMatchDate, formatMatchTime } from "@/lib/dateUtils";
 import { GlassCard } from "@/components/GlassCard";
 import { TeamLogo } from "@/components/TeamLogo";
@@ -57,6 +58,13 @@ function MatchPage() {
     staleTime: 60_000,
   });
 
+  const { data: analysis, isLoading: analysisLoading } = useQuery({
+    queryKey: ["analysis", id, "deep"],
+    queryFn: () => (event ? fetchAnalysis(event, "deep") : Promise.resolve(null)),
+    enabled: !!event,
+    staleTime: 5 * 60_000,
+  });
+
   if (isLoading) {
     return (
       <main className="max-w-4xl mx-auto px-6 pt-12 pb-24">
@@ -75,9 +83,45 @@ function MatchPage() {
     );
   }
 
-  const confidence = generateConfidence(event.idEvent);
-  const odds = generateOdds(event.idEvent);
-  const risk = confidence > 70 ? "Bajo" : confidence >= 40 ? "Medio" : "Alto";
+  const fallbackConfidence = generateConfidence(event.idEvent);
+  const fallbackOdds = generateOdds(event.idEvent);
+  const analysisUnavailable = !analysisLoading && (!analysis || !!analysis.error);
+  const confidence =
+    typeof analysis?.confidence_score === "number"
+      ? Math.round(analysis.confidence_score)
+      : fallbackConfidence;
+  const odds = analysis?.odds
+    ? {
+        home: analysis.odds.home.toFixed(2),
+        draw: analysis.odds.draw ? analysis.odds.draw.toFixed(2) : "—",
+        away: analysis.odds.away.toFixed(2),
+      }
+    : fallbackOdds;
+  const mainPick =
+    analysis?.main_pick ||
+    (fallbackConfidence > 55 ? event.strHomeTeam : event.strAwayTeam);
+  const riskLabel =
+    analysis?.risk_level === "low"
+      ? "Bajo"
+      : analysis?.risk_level === "high"
+      ? "Alto"
+      : analysis?.risk_level === "medium"
+      ? "Medio"
+      : confidence > 70
+      ? "Bajo"
+      : confidence >= 40
+      ? "Medio"
+      : "Alto";
+  const ml = analysis?.ml_probabilities ?? null;
+  const deep = analysis?.deep_analysis;
+  const deepSections: Array<{ t: string; d: string }> = deep
+    ? [
+        { t: "Forma del equipo", d: deep.team_form ?? "—" },
+        { t: "Análisis de mercado", d: deep.market_analysis ?? "—" },
+        { t: "Oportunidades de valor", d: deep.value_opportunities ?? "—" },
+        { t: "Recomendación final", d: deep.final_recommendation ?? "—" },
+      ].filter((s) => s.d && s.d !== "—")
+    : [];
   const statusLabel =
     event.strStatus === "live"
       ? "En vivo"
@@ -149,9 +193,12 @@ function MatchPage() {
           <div className="mt-4 flex flex-col md:flex-row md:items-center gap-6">
             <div className="flex-1">
               <div className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
-                {confidence > 55 ? event.strHomeTeam : event.strAwayTeam} · Pick principal
+                {mainPick} · Pick principal
               </div>
-              <div className="mt-1 text-sm text-[#636366]">Riesgo: {risk}</div>
+              <div className="mt-1 text-sm text-[#636366]">Riesgo: {riskLabel}</div>
+              {analysisLoading && (
+                <div className="mt-3 h-3 w-40 bg-black/5 rounded animate-pulse" />
+              )}
             </div>
             <div className="md:w-64">
               <ConfidenceBar score={confidence} />
@@ -160,29 +207,120 @@ function MatchPage() {
           <div className="mt-6">
             <OddsPills home={odds.home} draw={odds.draw} away={odds.away} />
           </div>
+          {analysis?.quick_summary && (
+            <p className="mt-6 text-sm text-[#636366] leading-relaxed">
+              {analysis.quick_summary}
+            </p>
+          )}
         </GlassCard>
+
+        {/* ML probabilities */}
+        {ml && (
+          <GlassCard className="mt-6 p-6">
+            <div className="text-[10px] uppercase tracking-widest text-[#636366] font-semibold">
+              Probabilidades del modelo ML
+            </div>
+            <div className="mt-4 space-y-3">
+              {[
+                { label: event.strHomeTeam, value: ml.home, color: "#007AFF" },
+                { label: "Empate", value: ml.draw, color: "#8E8E93" },
+                { label: event.strAwayTeam, value: ml.away, color: "#FF3B30" },
+              ].map((row) => (
+                <div key={row.label}>
+                  <div className="flex justify-between text-xs text-[#1D1D1F] mb-1">
+                    <span>{row.label}</span>
+                    <span className="tabular-nums">{(row.value * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-2 bg-black/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${row.value * 100}%`, background: row.color }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Deep analysis */}
         <GlassCard className="mt-6 p-6">
           <div className="text-[10px] uppercase tracking-widest text-[#636366] font-semibold">
             Análisis profundo
           </div>
-          <div className="mt-6 grid md:grid-cols-2 gap-6">
-            {[
-              { t: "Forma del equipo", d: `${event.strHomeTeam} llega en buena dinámica con estabilidad defensiva reciente.` },
-              { t: "Análisis táctico", d: `Se espera un planteamiento posicional con presión media alta en ${event.strLeague}.` },
-              { t: "Tendencias históricas", d: "Los duelos previos favorecen ligeramente al equipo local en el marcador." },
-              { t: "Análisis de mercado", d: "Movimientos de cuota indican interés profesional en el mercado 1X2." },
-              { t: "Oportunidades de valor", d: "Ventaja detectada en Over 2.5 y BTTS según modelos xG." },
-              { t: "Recomendación final", d: `Pick sugerido: ${confidence > 55 ? event.strHomeTeam : event.strAwayTeam} con stake moderado.` },
-            ].map((s) => (
-              <div key={s.t}>
-                <h4 className="text-sm font-semibold tracking-tight text-[#1D1D1F]">{s.t}</h4>
-                <p className="mt-1 text-sm text-[#636366] leading-relaxed">{s.d}</p>
-              </div>
-            ))}
-          </div>
+          {analysisLoading && (
+            <div className="mt-6 grid md:grid-cols-2 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 w-1/3 bg-black/5 rounded animate-pulse" />
+                  <div className="h-16 w-full bg-black/5 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          )}
+          {!analysisLoading && deepSections.length > 0 && (
+            <div className="mt-6 grid md:grid-cols-2 gap-6">
+              {deepSections.map((s) => (
+                <div key={s.t}>
+                  <h4 className="text-sm font-semibold tracking-tight text-[#1D1D1F]">
+                    {s.t}
+                  </h4>
+                  <p className="mt-1 text-sm text-[#636366] leading-relaxed">{s.d}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {!analysisLoading && deepSections.length === 0 && (
+            <p className="mt-6 text-sm text-[#636366]">
+              {analysisUnavailable
+                ? "Análisis no disponible en este momento."
+                : "Sin secciones adicionales."}
+            </p>
+          )}
         </GlassCard>
+
+        {/* Best picks */}
+        {analysis?.best_picks && analysis.best_picks.length > 0 && (
+          <GlassCard className="mt-6 p-6">
+            <div className="text-[10px] uppercase tracking-widest text-[#636366] font-semibold">
+              Mejores picks
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[#636366] text-xs">
+                    <th className="py-2 pr-4 font-medium">Mercado</th>
+                    <th className="py-2 pr-4 font-medium">Pick</th>
+                    <th className="py-2 pr-4 font-medium tabular-nums">Cuota</th>
+                    <th className="py-2 pr-4 font-medium tabular-nums">EV</th>
+                    <th className="py-2 font-medium">Razonamiento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analysis.best_picks.map((p, i) => (
+                    <tr key={i} className="border-t border-white/60 align-top">
+                      <td className="py-2 pr-4">{p.market ?? "—"}</td>
+                      <td className="py-2 pr-4">{p.pick ?? "—"}</td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {typeof p.odds === "number" ? p.odds.toFixed(2) : "—"}
+                      </td>
+                      <td
+                        className={`py-2 pr-4 tabular-nums ${
+                          typeof p.ev === "number" && p.ev > 0
+                            ? "text-[#34C759]"
+                            : "text-[#636366]"
+                        }`}
+                      >
+                        {typeof p.ev === "number" ? p.ev.toFixed(3) : "—"}
+                      </td>
+                      <td className="py-2 text-[#636366]">{p.reasoning ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+        </GlassCard>
+        )}
 
         {/* Notes */}
         <GlassCard className="mt-6 p-6">
