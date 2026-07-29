@@ -13,6 +13,7 @@ import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MatchIdRouteImport } from './routes/match.$id'
+import { Route as ApiMatchesRouteImport } from './routes/api/matches'
 import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
 
 const PortfolioRoute = PortfolioRouteImport.update({
@@ -35,6 +36,11 @@ const MatchIdRoute = MatchIdRouteImport.update({
   path: '/match/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMatchesRoute = ApiMatchesRouteImport.update({
+  id: '/api/matches',
+  path: '/api/matches',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAnalysisRoute = ApiAnalysisRouteImport.update({
   id: '/api/analysis',
   path: '/api/analysis',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/portfolio': typeof PortfolioRoute
   '/api/analysis': typeof ApiAnalysisRoute
+  '/api/matches': typeof ApiMatchesRoute
   '/match/$id': typeof MatchIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/portfolio': typeof PortfolioRoute
   '/api/analysis': typeof ApiAnalysisRoute
+  '/api/matches': typeof ApiMatchesRoute
   '/match/$id': typeof MatchIdRoute
 }
 export interface FileRoutesById {
@@ -61,19 +69,33 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/portfolio': typeof PortfolioRoute
   '/api/analysis': typeof ApiAnalysisRoute
+  '/api/matches': typeof ApiMatchesRoute
   '/match/$id': typeof MatchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analytics' | '/portfolio' | '/api/analysis' | '/match/$id'
+  fullPaths:
+    | '/'
+    | '/analytics'
+    | '/portfolio'
+    | '/api/analysis'
+    | '/api/matches'
+    | '/match/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/portfolio' | '/api/analysis' | '/match/$id'
+  to:
+    | '/'
+    | '/analytics'
+    | '/portfolio'
+    | '/api/analysis'
+    | '/api/matches'
+    | '/match/$id'
   id:
     | '__root__'
     | '/'
     | '/analytics'
     | '/portfolio'
     | '/api/analysis'
+    | '/api/matches'
     | '/match/$id'
   fileRoutesById: FileRoutesById
 }
@@ -82,6 +104,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   PortfolioRoute: typeof PortfolioRoute
   ApiAnalysisRoute: typeof ApiAnalysisRoute
+  ApiMatchesRoute: typeof ApiMatchesRoute
   MatchIdRoute: typeof MatchIdRoute
 }
 
@@ -115,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/matches': {
+      id: '/api/matches'
+      path: '/api/matches'
+      fullPath: '/api/matches'
+      preLoaderRoute: typeof ApiMatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/analysis': {
       id: '/api/analysis'
       path: '/api/analysis'
@@ -130,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   PortfolioRoute: PortfolioRoute,
   ApiAnalysisRoute: ApiAnalysisRoute,
+  ApiMatchesRoute: ApiMatchesRoute,
   MatchIdRoute: MatchIdRoute,
 }
 export const routeTree = rootRouteImport

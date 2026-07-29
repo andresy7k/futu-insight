@@ -33,20 +33,25 @@ interface MlPrediction {
 // ============================================================================
 
 const SPORT_KEY_MAP: Record<string, string> = {
+  "Premier League": "soccer_epl",
   "English Premier League": "soccer_epl",
+  "Primera Division": "soccer_spain_la_liga",
   "La Liga": "soccer_spain_la_liga",
   "Serie A": "soccer_italy_serie_a",
   Bundesliga: "soccer_germany_bundesliga",
   "Ligue 1": "soccer_france_ligue_one",
   "UEFA Champions League": "soccer_uefa_champs_league",
   "UEFA Europa League": "soccer_uefa_europa_league",
+  "UEFA Europa Conference League": "soccer_uefa_europa_conference_league",
   "Copa Libertadores": "soccer_conmebol_libertadores",
   NBA: "basketball_nba",
   MLB: "baseball_mlb",
 };
 
 const LEAGUE_CODE_MAP: Record<string, string> = {
+  "Premier League": "E0",
   "English Premier League": "E0",
+  "Primera Division": "SP1",
   "La Liga": "SP1",
   "Serie A": "I1",
   Bundesliga: "D1",
