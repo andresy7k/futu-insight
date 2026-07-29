@@ -45,7 +45,17 @@ async function fetchSport(date: string, sport: string): Promise<SportsDBEvent[]>
     const res = await fetch(`${BASE}/eventsday.php?d=${date}&s=${sport}`);
     if (!res.ok) return [];
     const json = (await res.json()) as { events?: SportsDBEvent[] | null };
-    return json.events ?? [];
+    const events = json.events ?? [];
+    if (sport === "Soccer") {
+      console.log("[DEBUG] TheSportsDB Soccer raw count:", events.length);
+      console.log(
+        "[DEBUG] TheSportsDB Soccer leagues found:",
+        [...new Set(events.map((e) => e.strLeague))],
+      );
+    } else {
+      console.log(`[DEBUG] TheSportsDB ${sport} raw count:`, events.length);
+    }
+    return events;
   } catch {
     return [];
   }
@@ -56,7 +66,13 @@ async function fetchFootballDataOrg(date: string): Promise<SportsDBEvent[]> {
     const res = await fetch(`/api/matches?date=${date}`);
     if (!res.ok) return [];
     const json = (await res.json()) as { events?: SportsDBEvent[] };
-    return (json.events ?? []).map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+    const events = json.events ?? [];
+    console.log("[DEBUG] football-data.org raw count:", events.length);
+    console.log(
+      "[DEBUG] football-data.org competitions found:",
+      [...new Set(events.map((e) => e.strLeague))],
+    );
+    return events.map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
   } catch {
     return [];
   }
@@ -88,9 +104,29 @@ export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> 
     const saSoccer = sportsdbSoccer
       .filter((e) => e && e.strLeague && SA_SOCCER_LEAGUES.has(e.strLeague))
       .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+    console.log("[DEBUG] TheSportsDB Soccer after filter:", saSoccer.length);
+    console.log("[DEBUG] football-data.org after filter:", fd.length);
 
     const football = dedupe([...fd, ...saSoccer]).sort(byTime);
-    if (football.length > 0) return football;
+    if (football.length > 0) {
+      console.log("[DEBUG] Final matches count:", football.length);
+      console.log(
+        "[DEBUG] Final matches by league:",
+        football.reduce<Record<string, number>>((acc, m) => {
+          acc[m.strLeague] = (acc[m.strLeague] || 0) + 1;
+          return acc;
+        }, {}),
+      );
+      if (football[0]) {
+        const o = generateOdds(football[0].idEvent);
+        console.log("[DEBUG] Odds raw values (first match):", {
+          home: o.home,
+          draw: o.draw,
+          away: o.away,
+        });
+      }
+      return football;
+    }
 
     // Only if there is zero football, fall back to NBA + MLB.
     const [basketball, baseball] = await Promise.all([
@@ -103,7 +139,20 @@ export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> 
     const mlb = baseball
       .filter((e) => e && e.strLeague && MLB_LEAGUES.has(e.strLeague))
       .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
-    return [...nba.sort(byTime), ...mlb.sort(byTime)];
+    const fallback = [...nba.sort(byTime), ...mlb.sort(byTime)];
+    console.log("[DEBUG] No football — fallback matches count:", fallback.length);
+    console.log(
+      "[DEBUG] Fallback matches by league:",
+      fallback.reduce<Record<string, number>>((acc, m) => {
+        acc[m.strLeague] = (acc[m.strLeague] || 0) + 1;
+        return acc;
+      }, {}),
+    );
+    if (fallback[0]) {
+      const o = generateOdds(fallback[0].idEvent);
+      console.log("[DEBUG] Odds raw values (first match):", o);
+    }
+    return fallback;
   } catch {
     return [];
   }
