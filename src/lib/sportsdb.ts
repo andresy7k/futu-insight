@@ -15,34 +15,26 @@ export interface SportsDBEvent {
 
 const BASE = "https://www.thesportsdb.com/api/v1/json/3";
 
-const ALLOWED_LEAGUES = new Set<string>([
-  "UEFA Champions League",
-  "UEFA Europa League",
-  "English Premier League",
-  "La Liga",
-  "Spanish La Liga",
-  "Serie A",
-  "Italian Serie A",
-  "Bundesliga",
-  "German Bundesliga",
-  "Ligue 1",
-  "French Ligue 1",
-  "FA Cup",
-  "Copa del Rey",
-  "Coppa Italia",
-  "DFB-Pokal",
-  "Coupe de France",
+// South American / niche leagues we fetch from TheSportsDB (football-data.org
+// free tier does not cover them). Match against the exact strings TheSportsDB
+// returns — several regional variants included.
+const SA_SOCCER_LEAGUES = new Set<string>([
+  "Argentinian Primera Division",
+  "Argentine Primera División",
+  "Superliga Argentina",
+  "Liga Profesional Argentina",
+  "Colombian Primera A",
+  "Liga Betplay",
+  "Categoría Primera A",
+  "Liga BetPlay DIMAYOR",
   "Copa Libertadores",
   "Copa Sudamericana",
-  "Liga MX",
-  "Mexican Primera League",
-  "Brasileirao",
   "Brazilian Serie A",
-  "NBA",
-  "American NBA",
-  "MLB",
-  "American MLB",
+  "Brasileirao",
 ]);
+
+const NBA_LEAGUES = new Set<string>(["NBA", "American NBA"]);
+const MLB_LEAGUES = new Set<string>(["MLB", "American MLB"]);
 
 function mapStatus(s?: string | null): "scheduled" | "live" | "finished" {
   if (!s) return "scheduled";
@@ -63,33 +55,79 @@ async function fetchSport(date: string, sport: string): Promise<SportsDBEvent[]>
   }
 }
 
+async function fetchFootballDataOrg(date: string): Promise<SportsDBEvent[]> {
+  try {
+    const res = await fetch(`/api/matches?date=${date}`);
+    if (!res.ok) return [];
+    const json = (await res.json()) as { events?: SportsDBEvent[] };
+    return (json.events ?? []).map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+  } catch {
+    return [];
+  }
+}
+
+function dedupe(events: SportsDBEvent[]): SportsDBEvent[] {
+  const seen = new Set<string>();
+  const out: SportsDBEvent[] = [];
+  for (const e of events) {
+    const key = `${e.dateEvent}__${(e.strHomeTeam ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(e);
+  }
+  return out;
+}
+
+function byTime(a: SportsDBEvent, b: SportsDBEvent): number {
+  return (a.strTime ?? "").localeCompare(b.strTime ?? "");
+}
+
 export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> {
   try {
-    const soccer = (await fetchSport(date, "Soccer")).filter(
-      (e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague),
-    );
+    // Primary football source (server-proxied) + TheSportsDB for SA leagues.
+    const [fd, sportsdbSoccer] = await Promise.all([
+      fetchFootballDataOrg(date),
+      fetchSport(date, "Soccer"),
+    ]);
+    const saSoccer = sportsdbSoccer
+      .filter((e) => e && e.strLeague && SA_SOCCER_LEAGUES.has(e.strLeague))
+      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
 
-    let basketball: SportsDBEvent[] = [];
-    let baseball: SportsDBEvent[] = [];
-    if (soccer.length < 3) {
-      const [b, m] = await Promise.all([
-        fetchSport(date, "Basketball"),
-        fetchSport(date, "Baseball"),
-      ]);
-      basketball = b.filter((e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague));
-      baseball = m.filter((e) => e && e.strLeague && ALLOWED_LEAGUES.has(e.strLeague));
-    }
+    const football = dedupe([...fd, ...saSoccer]).sort(byTime);
+    if (football.length > 0) return football;
 
-    return [...soccer, ...basketball, ...baseball].map((e) => ({
-      ...e,
-      strStatus: mapStatus(e.strStatus),
-    }));
+    // Only if there is zero football, fall back to NBA + MLB.
+    const [basketball, baseball] = await Promise.all([
+      fetchSport(date, "Basketball"),
+      fetchSport(date, "Baseball"),
+    ]);
+    const nba = basketball
+      .filter((e) => e && e.strLeague && NBA_LEAGUES.has(e.strLeague))
+      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+    const mlb = baseball
+      .filter((e) => e && e.strLeague && MLB_LEAGUES.has(e.strLeague))
+      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
+    return [...nba.sort(byTime), ...mlb.sort(byTime)];
   } catch {
     return [];
   }
 }
 
 export async function fetchEventById(id: string): Promise<SportsDBEvent | null> {
+  // football-data.org IDs are prefixed by our proxy — look them up by scanning
+  // recent dates so a shared/deep link still resolves.
+  if (id.startsWith("fd-")) {
+    const today = new Date();
+    for (let offset = -3; offset <= 7; offset++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + offset);
+      const iso = d.toISOString().slice(0, 10);
+      const list = await fetchFootballDataOrg(iso);
+      const found = list.find((e) => e.idEvent === id);
+      if (found) return found;
+    }
+    return null;
+  }
   try {
     const res = await fetch(`${BASE}/lookupevent.php?id=${id}`);
     if (!res.ok) return null;
@@ -102,15 +140,16 @@ export async function fetchEventById(id: string): Promise<SportsDBEvent | null> 
   }
 }
 
-// Deterministic plausible odds from event id
+// Deterministic plausible odds from event id. All values are guaranteed to be
+// positive numbers >= 1.40; no math ever subtracts from these values.
 export function generateOdds(id: string): { home: string; draw: string; away: string } {
   let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  // Use unsigned right shift so shifted values stay positive.
-  const a = 1.5 + ((h % 250) / 100); // 1.50 - 3.99
-  const b = 2.8 + (((h >>> 8) % 150) / 100); // 2.80 - 4.29
-  const c = 1.6 + (((h >>> 16) % 280) / 100); // 1.60 - 4.39
-  return { home: a.toFixed(2), draw: b.toFixed(2), away: c.toFixed(2) };
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) >>> 0;
+  const home = 1.4 + ((h % 200) / 100); // 1.40 - 3.39
+  const draw = 3.0 + (((h >>> 8) % 100) / 100); // 3.00 - 3.99
+  const away = 1.8 + (((h >>> 16) % 200) / 100); // 1.80 - 3.79
+  const clamp = (n: number) => Math.max(1.01, n).toFixed(2);
+  return { home: clamp(home), draw: clamp(draw), away: clamp(away) };
 }
 
 // Deterministic confidence 30 - 92
