@@ -20,17 +20,13 @@ const BASE = "https://www.thesportsdb.com/api/v1/json/3";
 // returns — several regional variants included.
 const SA_SOCCER_LEAGUES = new Set<string>([
   "Argentinian Primera Division",
-  "Argentine Primera División",
-  "Superliga Argentina",
-  "Liga Profesional Argentina",
-  "Colombian Primera A",
-  "Liga Betplay",
-  "Categoría Primera A",
-  "Liga BetPlay DIMAYOR",
-  "Copa Libertadores",
-  "Copa Sudamericana",
-  "Brazilian Serie A",
-  "Brasileirao",
+	"English Premier League",
+	"Colombian Liga Dimayor",
+	"Brazilian Serie A",
+	"Copa Libertadores",
+	"Copa Sudamericana",
+	"UEFA Champions League",
+	"Copa Ecuador",
 ]);
 
 const NBA_LEAGUES = new Set<string>(["NBA", "American NBA"]);
