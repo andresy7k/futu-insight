@@ -2,24 +2,23 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthUI } from "@/lib/authStore";
-import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 
 export function LoginModal() {
   const { loginOpen, closeLogin } = useAuthUI();
 
   const google = async () => {
     try {
-      const res = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
       });
-      if (res.error) {
+      if (error) {
         toast.error("No se pudo iniciar sesión con Google");
         return;
       }
-      if (!res.redirected) {
-        toast.success("Sesión iniciada");
-        closeLogin();
-      }
+      toast.success("Sesión iniciada");
+      closeLogin();
     } catch {
       toast.error("Error al iniciar sesión");
     }
