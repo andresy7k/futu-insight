@@ -13,10 +13,7 @@ export default defineConfig({
   plugins: [
     tsconfigPaths(),
     tailwindcss(),
-    tanstackStart({
-      customViteReactPlugin: true,
-      srcDirectory: "src",
-ދ    }),
+    tanstackStart({ srcDirectory: "src" }),
     nitro(),
     react(),
   ],
