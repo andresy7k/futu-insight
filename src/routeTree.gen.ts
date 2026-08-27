@@ -9,16 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PortfolioRouteImport } from './routes/portfolio'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MatchIdRouteImport } from './routes/match.$id'
-import { Route as ApiMatchesRouteImport } from './routes/api/matches'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ApiAnalysisRouteImport } from './routes/api/analysis'
+import { Route as ApiMatchesRouteImport } from './routes/api/matches'
+import { Route as MatchIdRouteImport } from './routes/match.$id'
 
-const PortfolioRoute = PortfolioRouteImport.update({
-  id: '/portfolio',
-  path: '/portfolio',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -26,14 +26,14 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const PortfolioRoute = PortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MatchIdRoute = MatchIdRouteImport.update({
-  id: '/match/$id',
-  path: '/match/$id',
+const ApiAnalysisRoute = ApiAnalysisRouteImport.update({
+  id: '/api/analysis',
+  path: '/api/analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMatchesRoute = ApiMatchesRouteImport.update({
@@ -41,9 +41,9 @@ const ApiMatchesRoute = ApiMatchesRouteImport.update({
   path: '/api/matches',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAnalysisRoute = ApiAnalysisRouteImport.update({
-  id: '/api/analysis',
-  path: '/api/analysis',
+const MatchIdRoute = MatchIdRouteImport.update({
+  id: '/match/$id',
+  path: '/match/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -110,11 +110,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/portfolio': {
-      id: '/portfolio'
-      path: '/portfolio'
-      fullPath: '/portfolio'
-      preLoaderRoute: typeof PortfolioRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -124,18 +124,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/portfolio': {
+      id: '/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/match/$id': {
-      id: '/match/$id'
-      path: '/match/$id'
-      fullPath: '/match/$id'
-      preLoaderRoute: typeof MatchIdRouteImport
+    '/api/analysis': {
+      id: '/api/analysis'
+      path: '/api/analysis'
+      fullPath: '/api/analysis'
+      preLoaderRoute: typeof ApiAnalysisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/matches': {
@@ -145,11 +145,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMatchesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/analysis': {
-      id: '/api/analysis'
-      path: '/api/analysis'
-      fullPath: '/api/analysis'
-      preLoaderRoute: typeof ApiAnalysisRouteImport
+    '/match/$id': {
+      id: '/match/$id'
+      path: '/match/$id'
+      fullPath: '/match/$id'
+      preLoaderRoute: typeof MatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
