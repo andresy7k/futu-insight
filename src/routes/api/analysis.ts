@@ -32,7 +32,11 @@ interface MlPrediction {
     url?: string;
     markets: Array<{ market: string; market_type: string; line?: number; selection: string; odds: number }>;
   } | null;
+  best_pick?: ValuePick | null;
+  market_groups?: MarketGroups | null;
 }
+interface ValuePick { market: string; selection: string; odds: number; ev_pct?: number; probability?: number; reason?: string }
+interface MarketGroups { high_value: ValuePick[]; value: ValuePick[]; low_value: ValuePick[]; not_recommended: ValuePick[] }
 
 // ============================================================================
 // League / sport key maps
@@ -62,6 +66,11 @@ const LEAGUE_CODE_MAP: Record<string, string> = {
   "Serie A": "I1",
   Bundesliga: "D1",
   "Ligue 1": "F1",
+  "Brazilian Serie A": "BR",
+  "Brazilian Serie B": "BR",
+  "Argentinian Primera Division": "ARG",
+  "Argentine Primera Division": "ARG",
+  "Liga Profesional Argentina": "ARG",
 };
 
 // ============================================================================
@@ -161,24 +170,26 @@ async function fetchMlPrediction(
   league: string,
   homeTeam: string,
   awayTeam: string,
+  mode: string,
 ): Promise<MlPrediction | null> {
   const base = process.env.MATCH_PREDICTOR_API_URL;
   const code = LEAGUE_CODE_MAP[league];
   if (!base || !code) return null;
   try {
-    const resp = await fetch(`${base.replace(/\/$/, "")}/predict`, {
+    const resp = await fetch(`${base.replace(/\/$/, "")}/global-predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code, include_betano: true }),
+      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code, mode }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!resp.ok) return null;
     const data = (await resp.json()) as any;
-    if (!data?.model_probs) return null;
+    if (!data?.prediction?.probabilities) return null;
+    const model = data.prediction;
     const probabilities = {
-      home: data.model_probs.home_win,
-      draw: data.model_probs.draw,
-      away: data.model_probs.away_win,
+      home: model.probabilities.home_win,
+      draw: model.probabilities.draw,
+      away: model.probabilities.away_win,
     };
     if (!Object.values(probabilities).every((value) => typeof value === "number")) return null;
     const best = Math.max(probabilities.home, probabilities.draw, probabilities.away);
@@ -187,7 +198,9 @@ async function fetchMlPrediction(
       probabilities,
       confidence: best * 100,
       risk_level: best >= .65 ? "low" : best >= .5 ? "medium" : "high",
-      betano: data.betano?.markets ? { markets: data.betano.markets } : null,
+      betano: null,
+      best_pick: data.best_pick ?? null,
+      market_groups: data.picks ?? null,
     };
   } catch (e) {
     console.error("[analysis] ML fetch failed", e);
@@ -396,8 +409,30 @@ export const Route = createFileRoute("/api/analysis")({
           // 2. Odds + ML in parallel
           const [odds, ml] = await Promise.all([
             fetchMarketOdds(body.league, body.homeTeam, body.awayTeam),
-            fetchMlPrediction(body.league, body.homeTeam, body.awayTeam),
+            fetchMlPrediction(body.league, body.homeTeam, body.awayTeam, body.mode ?? "quick"),
           ]);
+
+          // La vista rápida no depende de Groq: el pick procede directamente del
+          // modelo calibrado y de las cuotas Betano, así siempre queda disponible.
+          if (body.mode === "quick" && ml?.best_pick) {
+            return Response.json(
+              {
+                match_id: body.matchId,
+                main_pick: `${ml.best_pick.market}: ${ml.best_pick.selection}`,
+                confidence_score: ml.confidence,
+                risk_level: ml.risk_level,
+                quick_summary: "Pick calculado con probabilidades calibradas y cuotas Betano disponibles.",
+                best_picks: [ml.best_pick],
+                market_groups: ml.market_groups ?? null,
+                ml_probabilities: ml.probabilities,
+                odds,
+                betano_markets: ml.betano ?? null,
+                model_used: "global_model",
+                generated_at: new Date().toISOString(),
+              },
+              { headers: CORS },
+            );
+          }
 
           // 3. Groq
           const prompt = buildPrompt(body, odds, ml);
@@ -407,9 +442,18 @@ export const Route = createFileRoute("/api/analysis")({
             return Response.json(
               {
                 match_id: body.matchId,
-                error: "analysis_unavailable",
+                main_pick: ml?.best_pick ? `${ml.best_pick.market}: ${ml.best_pick.selection}` : null,
+                confidence_score: ml?.confidence ?? null,
+                risk_level: ml?.risk_level ?? "medium",
+                quick_summary: ml ? "Análisis estructurado disponible; la explicación editorial no respondió." : null,
+                best_picks: ml?.market_groups
+                  ? [...ml.market_groups.high_value, ...ml.market_groups.value, ...ml.market_groups.low_value]
+                  : [],
+                market_groups: ml?.market_groups ?? null,
                 ml_probabilities: ml?.probabilities ?? null,
                 odds,
+                model_used: ml ? "global_model" : "unavailable",
+                generated_at: new Date().toISOString(),
               },
               { status: 200, headers: CORS },
             );
@@ -417,12 +461,18 @@ export const Route = createFileRoute("/api/analysis")({
 
           const result = {
             match_id: body.matchId,
-            main_pick: parsed.main_pick,
+            main_pick: ml?.best_pick ? `${ml.best_pick.market}: ${ml.best_pick.selection}` : parsed.main_pick,
             confidence_score: ml?.confidence ?? parsed.confidence_score,
             risk_level: ml?.risk_level ?? parsed.risk_level,
             quick_summary: parsed.quick_summary,
             deep_analysis: parsed.deep_analysis,
-            best_picks: parsed.best_picks,
+            best_picks: ml?.market_groups
+              ? [...ml.market_groups.high_value, ...ml.market_groups.value, ...ml.market_groups.low_value].map((pick) => ({
+                  market: pick.market, pick: pick.selection, odds: pick.odds,
+                  ev: (pick.ev_pct ?? 0) / 100, reasoning: pick.reason ?? "Valor calculado contra cuota Betano",
+                }))
+              : parsed.best_picks,
+            market_groups: ml?.market_groups ?? null,
             ml_probabilities: ml?.probabilities ?? null,
             odds,
             betano_markets: ml?.betano ?? null,

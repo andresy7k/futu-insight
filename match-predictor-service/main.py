@@ -16,6 +16,11 @@ def predictor_module():
     import match_predictor_full
     return match_predictor_full
 
+@lru_cache(maxsize=1)
+def global_predictor():
+    from global_match_predictor import GlobalPredictor
+    return GlobalPredictor()
+
 app = FastAPI(title="Futi Insight Match Predictor", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +36,12 @@ class PredictionRequest(BaseModel):
     league: str | None = None
     bankroll: float = Field(default=100, gt=0)
     include_betano: bool = True
+
+class GlobalPredictionRequest(BaseModel):
+    home_team: str = Field(min_length=2)
+    away_team: str = Field(min_length=2)
+    league: str = Field(min_length=2)
+    mode: str = "quick"  # quick = único mejor pick; detailed = todos los grupos
 
 
 @app.get("/health")
@@ -74,3 +85,19 @@ def predict(body: PredictionRequest):
     }
     result["bankroll"] = body.bankroll
     return result
+
+@app.post("/global-predict")
+def global_predict(body: GlobalPredictionRequest):
+    """Endpoint que el calendario llama directamente, sin pedir equipos al usuario."""
+    from betano_client import markets as betano_markets
+    from global_match_predictor import rank_betano_markets
+    try:
+        prediction = global_predictor().predict(body.league, body.home_team, body.away_team)
+    except (LookupError, ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    markets, error = betano_markets(body.home_team, body.away_team)
+    tiers = rank_betano_markets(prediction, markets)
+    if body.mode == "quick":
+        best = next((pick for group in ("high_value", "value", "low_value") for pick in tiers[group]), None)
+        return {"prediction": prediction, "best_pick": best, "betano_error": error}
+    return {"prediction": prediction, "picks": tiers, "betano_error": error}

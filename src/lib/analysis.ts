@@ -21,6 +21,12 @@ export interface AnalysisResult {
   }>;
   ml_probabilities?: { home: number; draw: number; away: number } | null;
   odds?: { home: number; draw: number; away: number } | null;
+  market_groups?: {
+    high_value: Array<{ market: string; selection: string; odds: number; ev_pct?: number; probability?: number; reason?: string }>;
+    value: Array<{ market: string; selection: string; odds: number; ev_pct?: number; probability?: number; reason?: string }>;
+    low_value: Array<{ market: string; selection: string; odds: number; ev_pct?: number; probability?: number; reason?: string }>;
+    not_recommended: Array<{ market: string; selection: string; odds: number; ev_pct?: number; probability?: number; reason?: string }>;
+  } | null;
   betano_markets?: {
     fixture_id: string;
     start_time?: string;

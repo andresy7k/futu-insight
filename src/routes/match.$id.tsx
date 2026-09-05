@@ -114,6 +114,7 @@ function MatchPage() {
       : "Alto";
   const ml = analysis?.ml_probabilities ?? null;
   const deep = analysis?.deep_analysis;
+  const marketGroups = analysis?.market_groups;
   const deepSections: Array<{ t: string; d: string }> = deep
     ? [
         { t: "Forma del equipo", d: deep.team_form ?? "—" },
@@ -320,6 +321,38 @@ function MatchPage() {
               </table>
             </div>
         </GlassCard>
+        )}
+
+        {marketGroups && (
+          <GlassCard className="mt-6 p-6">
+            <div className="text-[10px] uppercase tracking-widest text-[#636366] font-semibold">
+              Valor de mercados Betano
+            </div>
+            <div className="mt-4 space-y-5">
+              {[
+                ["Alto valor", marketGroups.high_value, "text-[#34C759]"],
+                ["Valor", marketGroups.value, "text-[#007AFF]"],
+                ["Valor leve", marketGroups.low_value, "text-[#FF9500]"],
+                ["No recomendado", marketGroups.not_recommended, "text-[#8E8E93]"],
+              ].map(([title, picks, color]) => (
+                <div key={title as string}>
+                  <h4 className={`text-sm font-semibold ${color}`}>{title as string}</h4>
+                  {(picks as NonNullable<typeof marketGroups>["high_value"]).length ? (
+                    <ul className="mt-2 space-y-1 text-sm text-[#1D1D1F]">
+                      {(picks as NonNullable<typeof marketGroups>["high_value"]).map((pick, index) => (
+                        <li key={index} className="flex flex-wrap gap-x-2 text-[#636366]">
+                          <span>{pick.market}: {pick.selection}</span>
+                          <span>· @{pick.odds.toFixed(2)}</span>
+                          {typeof pick.ev_pct === "number" && <span>· EV {pick.ev_pct.toFixed(1)}%</span>}
+                          {pick.reason && <span>· {pick.reason}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-sm text-[#636366]">Ninguno.</p>}
+                </div>
+              ))}
+            </div>
+          </GlassCard>
         )}
 
         {/* Notes */}

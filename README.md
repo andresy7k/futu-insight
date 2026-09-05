@@ -27,6 +27,7 @@ It is not a gambling site. It is an intelligence tool — built for people who a
 - Time-aware Elo, calibrated 1X2 probabilities, Poisson goal models and risk-limited Kelly sizing
 - Betano markets are retrieved server-side via OddsPapi; API credentials never reach the browser
 - The model values 1X2, goals, BTTS, total corners, total cards and Asian handicaps. Player props are displayed but intentionally not recommended without player-level data.
+- `global_match_predictor.py` also supports ES, England, Italy, France, Germany, Brazil and Argentina with per-league training and a strict market-coverage policy.
 
 ### Value Bet Detection
 - Real Betano odds sourced server-side through **OddsPapi**
