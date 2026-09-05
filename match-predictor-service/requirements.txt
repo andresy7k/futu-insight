@@ -1,9 +1,8 @@
+fastapi
+uvicorn[standard]
 pandas
 numpy
 scipy
 scikit-learn
 requests
-fastapi
-uvicorn[standard]
-# Opcional: el programa usa RandomForest si XGBoost no está instalado.
-xgboost
+python-dotenv

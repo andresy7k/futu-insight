@@ -24,7 +24,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-ROOT = Path(__file__).parent / "global-data"
+ROOT = Path(__file__).parent / "data"
 LEAGUES = {
     "ES": {"name": "España", "patterns": ("matches_*_ES.csv",), "markets": ("1x2", "double_chance", "goals", "btts", "corners", "cards", "asian_handicap")},
     "E0": {"name": "Inglaterra", "patterns": ("matches_*_ING.csv",), "markets": ("1x2", "double_chance", "goals", "btts", "corners", "cards", "asian_handicap")},
