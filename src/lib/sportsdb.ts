@@ -102,7 +102,7 @@ export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> 
       fetchSport(date, "Soccer"),
     ]);
     const saSoccer = sportsdbSoccer
-      .filter((e) => e && e.strLeague && SA_SOCCER_LEAGUES.has(e.strLeague))
+      .filter((e) => e && e.strHomeTeam && e.strAwayTeam && e.dateEvent === date)
       .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
     console.log("[DEBUG] TheSportsDB Soccer after filter:", saSoccer.length);
     console.log("[DEBUG] football-data.org after filter:", fd.length);
@@ -129,17 +129,8 @@ export async function fetchEventsByDate(date: string): Promise<SportsDBEvent[]> 
     }
 
     // Only if there is zero football, fall back to NBA + MLB.
-    const [basketball, baseball] = await Promise.all([
-      fetchSport(date, "Basketball"),
-      fetchSport(date, "Baseball"),
-    ]);
-    const nba = basketball
-      .filter((e) => e && e.strLeague && NBA_LEAGUES.has(e.strLeague))
-      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
-    const mlb = baseball
-      .filter((e) => e && e.strLeague && MLB_LEAGUES.has(e.strLeague))
-      .map((e) => ({ ...e, strStatus: mapStatus(e.strStatus) }));
-    const fallback = [...nba.sort(byTime), ...mlb.sort(byTime)];
+    // A calendar of football matches must never fall back to another sport.
+    const fallback: SportsDBEvent[] = [];
     console.log("[DEBUG] No football — fallback matches count:", fallback.length);
     console.log(
       "[DEBUG] Fallback matches by league:",

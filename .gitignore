@@ -4,6 +4,8 @@
 .env.production
 .env.development
 *.env
+__pycache__/
+*.pyc
 
 # Logs
 logs

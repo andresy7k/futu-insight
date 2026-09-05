@@ -1,6 +1,0 @@
-storage/trained/
-storage/cache/
-__pycache__/
-*.pyc
-.env
-*.pkl

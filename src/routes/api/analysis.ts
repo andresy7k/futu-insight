@@ -26,6 +26,12 @@ interface MlPrediction {
   probabilities: { home: number; draw: number; away: number };
   confidence: number;
   risk_level: "low" | "medium" | "high";
+  betano?: {
+    fixture_id: string;
+    start_time?: string;
+    url?: string;
+    markets: Array<{ market: string; market_type: string; line?: number; selection: string; odds: number }>;
+  } | null;
 }
 
 // ============================================================================
@@ -156,25 +162,32 @@ async function fetchMlPrediction(
   homeTeam: string,
   awayTeam: string,
 ): Promise<MlPrediction | null> {
-  const base = process.env.PROPHITBET_API_URL;
+  const base = process.env.MATCH_PREDICTOR_API_URL;
   const code = LEAGUE_CODE_MAP[league];
   if (!base || !code) return null;
   try {
     const resp = await fetch(`${base.replace(/\/$/, "")}/predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code }),
+      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code, include_betano: true }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!resp.ok) return null;
     const data = (await resp.json()) as any;
-    if (data?.fallback === true || data?.supported === false) return null;
-    if (!data?.probabilities) return null;
+    if (!data?.model_probs) return null;
+    const probabilities = {
+      home: data.model_probs.home_win,
+      draw: data.model_probs.draw,
+      away: data.model_probs.away_win,
+    };
+    if (!Object.values(probabilities).every((value) => typeof value === "number")) return null;
+    const best = Math.max(probabilities.home, probabilities.draw, probabilities.away);
     return {
-      prediction: data.prediction,
-      probabilities: data.probabilities,
-      confidence: data.confidence,
-      risk_level: data.risk_level,
+      prediction: best === probabilities.home ? "H" : best === probabilities.draw ? "D" : "A",
+      probabilities,
+      confidence: best * 100,
+      risk_level: best >= .65 ? "low" : best >= .5 ? "medium" : "high",
+      betano: data.betano?.markets ? { markets: data.betano.markets } : null,
     };
   } catch (e) {
     console.error("[analysis] ML fetch failed", e);
@@ -412,6 +425,7 @@ export const Route = createFileRoute("/api/analysis")({
             best_picks: parsed.best_picks,
             ml_probabilities: ml?.probabilities ?? null,
             odds,
+            betano_markets: ml?.betano ?? null,
             model_used: ml ? "ensemble+llm" : "llm_only",
             generated_at: new Date().toISOString(),
           };

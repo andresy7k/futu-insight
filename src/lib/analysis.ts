@@ -21,6 +21,12 @@ export interface AnalysisResult {
   }>;
   ml_probabilities?: { home: number; draw: number; away: number } | null;
   odds?: { home: number; draw: number; away: number } | null;
+  betano_markets?: {
+    fixture_id: string;
+    start_time?: string;
+    url?: string;
+    markets: Array<{ market: string; market_type: string; line?: number; selection: string; odds: number }>;
+  } | null;
   model_used?: string;
   generated_at?: string;
   cached?: boolean;

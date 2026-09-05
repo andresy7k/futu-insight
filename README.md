@@ -21,16 +21,15 @@ It is not a gambling site. It is an intelligence tool — built for people who a
 - Powered by **Groq (Llama 3.3 70B)** with a structured data-driven prompt
 - Analysis cached in Supabase for 6 hours — no redundant API calls
 
-### ML Predictions (ProphitBet Microservice)
-- Separate **Python FastAPI microservice** deployed on Railway
-- Trained on historical data from **football-data.co.uk** (3 seasons)
-- Models: Random Forest + XGBoost ensemble per league
-- Supported leagues: Premier League (E0), La Liga (SP1), Serie A (I1), Bundesliga (D1), Ligue 1 (F1)
-- Returns home/draw/away probabilities + confidence score + risk level
-- For unsupported leagues: falls back gracefully to LLM-only analysis
+### ML Predictions (Match Predictor Service)
+- A single **Python FastAPI service** in `match-predictor-service/`, deployed on Railway
+- Uses the historical Football-Data CSVs bundled with the service
+- Time-aware Elo, calibrated 1X2 probabilities, Poisson goal models and risk-limited Kelly sizing
+- Betano markets are retrieved server-side via OddsPapi; API credentials never reach the browser
+- The model values 1X2, goals, BTTS, total corners, total cards and Asian handicaps. Player props are displayed but intentionally not recommended without player-level data.
 
 ### Value Bet Detection
-- Real odds sourced from **The Odds API** (EU region, h2h markets)
+- Real Betano odds sourced server-side through **OddsPapi**
 - Expected Value calculated per outcome: `EV = (model_probability × odds) - 1`
 - Positive EV bets highlighted in the best picks table
 
