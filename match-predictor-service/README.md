@@ -21,11 +21,14 @@ match-predictor-service/
 Desde esta carpeta:
 
 ```powershell
+# Menú visual histórico: España y opción 5 para el predictor global visual.
+python match_predictor_full.py
+
+# CLI técnica directa del modelo global (salida JSON).
 python global_match_predictor.py
 ```
 
-El terminal pide liga, equipo local y visitante. Las ligas admitidas son `ES`,
-`E0`, `I1`, `F1`, `D1`, `BR` y `ARG`.
+El modo global admite `ES`, `E0`, `I1`, `F1`, `D1`, `BR` y `ARG`.
 
 ## Variables de entorno
 
