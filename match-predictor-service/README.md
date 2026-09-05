@@ -32,5 +32,11 @@ El modo global admite `ES`, `E0`, `I1`, `F1`, `D1`, `BR` y `ARG`.
 
 ## Variables de entorno
 
-En Railway configura `ODDSPAPI_API_KEY`. La clave nunca se expone al navegador.
+En Railway configura `ODDSPAPI_API_KEY` y `ODDS_API_KEY` (The Odds API). La
+clave nunca se expone al navegador. El orden de consulta es Betano/OddsPapi y,
+si no responde, The Odds API con mercados 1X2, totales y hándicaps disponibles.
 El frontend debe tener `MATCH_PREDICTOR_API_URL` apuntando a esta API pública.
+
+Las cuotas manuales del administrador se guardan en Supabase y tienen prioridad
+para ese partido. Aplica antes la migración
+`supabase/migrations/20260905223000_admin_manual_match_inputs.sql`.

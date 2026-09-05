@@ -30,6 +30,7 @@ class GlobalPredictionRequest(BaseModel):
     away_team: str = Field(min_length=2)
     league: str = Field(min_length=2)
     mode: str = "quick"  # quick: un pick; detailed: grupos completos.
+    manual_markets: list[dict] | None = None
 
 
 @app.get("/health")
@@ -58,7 +59,10 @@ def global_predict(body: GlobalPredictionRequest):
     except (LookupError, ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    market_list, error = betano_markets(body.home_team, body.away_team)
+    if body.manual_markets:
+        market_list, error = body.manual_markets, "Cuotas manuales del administrador"
+    else:
+        market_list, error = betano_markets(body.home_team, body.away_team, body.league)
     tiers = rank_betano_markets(prediction, market_list)
     if body.mode == "quick":
         best = next(

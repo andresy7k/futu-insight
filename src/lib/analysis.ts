@@ -33,6 +33,7 @@ export interface AnalysisResult {
     url?: string;
     markets: Array<{ market: string; market_type: string; line?: number; selection: string; odds: number }>;
   } | null;
+  admin_note?: string | null;
   model_used?: string;
   generated_at?: string;
   cached?: boolean;

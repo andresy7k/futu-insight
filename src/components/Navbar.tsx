@@ -12,6 +12,7 @@ const links = [
   { to: "/portfolio", label: "Portfolio" },
   { to: "/analytics", label: "Analytics" },
 ];
+const ADMIN_EMAIL = "andrescalix00@gmail.com";
 
 export function Navbar() {
   const { pathname } = useLocation();
@@ -37,7 +38,7 @@ export function Navbar() {
           Futibet
         </Link>
         <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => {
+          {[...links, ...(user?.email === ADMIN_EMAIL ? [{ to: "/admin", label: "Admin" }] : [])].map((l) => {
             const active = pathname === l.to;
             return (
               <Link

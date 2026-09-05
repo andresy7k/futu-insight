@@ -152,3 +152,9 @@
     color: var(--color-foreground);
   }
 }
+
+@layer components {
+  .input {
+    @apply w-full rounded-xl border border-white/80 bg-white/60 px-3 py-2 text-sm text-[#1D1D1F] outline-none transition focus:ring-2 focus:ring-[#007AFF]/30;
+  }
+}

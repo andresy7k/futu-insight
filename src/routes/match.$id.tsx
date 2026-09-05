@@ -355,6 +355,13 @@ function MatchPage() {
           </GlassCard>
         )}
 
+        {analysis?.admin_note && (
+          <GlassCard className="mt-6 p-6">
+            <div className="text-[10px] uppercase tracking-widest text-[#007AFF] font-semibold">Nota del administrador</div>
+            <p className="mt-3 text-sm leading-6 text-[#1D1D1F] whitespace-pre-wrap">{analysis.admin_note}</p>
+          </GlassCard>
+        )}
+
         {/* Notes */}
         <GlassCard className="mt-6 p-6">
           <div className="text-[10px] uppercase tracking-widest text-[#636366] font-semibold">

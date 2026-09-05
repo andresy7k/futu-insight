@@ -171,6 +171,7 @@ async function fetchMlPrediction(
   homeTeam: string,
   awayTeam: string,
   mode: string,
+  manualMarkets?: ValuePick[] | null,
 ): Promise<MlPrediction | null> {
   const base = process.env.MATCH_PREDICTOR_API_URL;
   const code = LEAGUE_CODE_MAP[league];
@@ -179,7 +180,7 @@ async function fetchMlPrediction(
     const resp = await fetch(`${base.replace(/\/$/, "")}/global-predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code, mode }),
+      body: JSON.stringify({ home_team: homeTeam, away_team: awayTeam, league: code, mode, manual_markets: manualMarkets ?? undefined }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!resp.ok) return null;
@@ -356,6 +357,17 @@ function getAdminClient() {
   });
 }
 
+async function getManualInput(admin: ReturnType<typeof getAdminClient>, matchId: string) {
+  if (!admin) return null;
+  try {
+    const { data } = await admin.from("manual_match_inputs" as never).select("markets,note" as never).eq("match_id" as never, matchId).maybeSingle();
+    return data as { markets?: ValuePick[]; note?: string } | null;
+  } catch (error) {
+    console.error("[analysis] manual input read failed", error);
+    return null;
+  }
+}
+
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
 // ============================================================================
@@ -383,9 +395,10 @@ export const Route = createFileRoute("/api/analysis")({
           }
 
           const admin = getAdminClient();
+          const manualInput = await getManualInput(admin, body.matchId);
 
           // 1. Cache lookup
-          if (admin) {
+          if (admin && !manualInput) {
             try {
               const { data: cached } = await admin
                 .from("predictions")
@@ -409,7 +422,7 @@ export const Route = createFileRoute("/api/analysis")({
           // 2. Odds + ML in parallel
           const [odds, ml] = await Promise.all([
             fetchMarketOdds(body.league, body.homeTeam, body.awayTeam),
-            fetchMlPrediction(body.league, body.homeTeam, body.awayTeam, body.mode ?? "quick"),
+            fetchMlPrediction(body.league, body.homeTeam, body.awayTeam, body.mode ?? "quick", manualInput?.markets ?? null),
           ]);
 
           // La vista rápida no depende de Groq: el pick procede directamente del
@@ -427,6 +440,7 @@ export const Route = createFileRoute("/api/analysis")({
                 ml_probabilities: ml.probabilities,
                 odds,
                 betano_markets: ml.betano ?? null,
+                admin_note: manualInput?.note ?? null,
                 model_used: "global_model",
                 generated_at: new Date().toISOString(),
               },
@@ -452,6 +466,7 @@ export const Route = createFileRoute("/api/analysis")({
                 market_groups: ml?.market_groups ?? null,
                 ml_probabilities: ml?.probabilities ?? null,
                 odds,
+                admin_note: manualInput?.note ?? null,
                 model_used: ml ? "global_model" : "unavailable",
                 generated_at: new Date().toISOString(),
               },
@@ -476,6 +491,7 @@ export const Route = createFileRoute("/api/analysis")({
             ml_probabilities: ml?.probabilities ?? null,
             odds,
             betano_markets: ml?.betano ?? null,
+            admin_note: manualInput?.note ?? null,
             model_used: ml ? "ensemble+llm" : "llm_only",
             generated_at: new Date().toISOString(),
           };

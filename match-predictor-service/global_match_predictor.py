@@ -150,7 +150,9 @@ def rank_betano_markets(prediction: dict[str, Any], markets: list[dict[str, Any]
             # OddsPapi expresa la línea desde la perspectiva del local; 2/Away la invierte.
             if "asian_handicap" in allowed and np.isfinite(line):
                 home_side = selection in {"1", "home", "local"}
-                handicap = line if home_side else -line
+                # The Odds API entrega el spread desde el lado seleccionado;
+                # OddsPapi conserva la línea desde la perspectiva del local.
+                handicap = line if (home_side or not item.get("line_for_selection")) else -line
                 outcomes = _asian_handicap_outcomes(prediction["score_expectation"]["home"], prediction["score_expectation"]["away"], handicap)
                 probability, push_probability = outcomes[0], outcomes[1]
                 key = f"{'home' if home_side else 'away'} AH {line:g}"

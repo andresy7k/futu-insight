@@ -86,6 +86,42 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_match_inputs: {
+        Row: {
+          away_team: string
+          home_team: string
+          id: string
+          league: string
+          markets: Json
+          match_id: string
+          note: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          away_team: string
+          home_team: string
+          id?: string
+          league: string
+          markets?: Json
+          match_id: string
+          note?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          away_team?: string
+          home_team?: string
+          id?: string
+          league?: string
+          markets?: Json
+          match_id?: string
+          note?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
       predictions: {
         Row: {
           away_team: string
